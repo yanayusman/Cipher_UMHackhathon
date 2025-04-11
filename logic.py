@@ -1,6 +1,7 @@
 from data_loader import load_data
 import pandas as pd
 
+
 data = load_data()
 items = data["items"]
 transaction_data = data["transaction_data"]
@@ -11,8 +12,6 @@ merged_data = transaction_items.merge(items, on = "item_id", how = "left")
 
 print(transaction_data.columns)  # To check if 'order_value' exists
 print(transaction_data.head())  # To see the first few rows and ensure the data is correct
-
-
 
 # return total order value and number of orders for a given date
 def get_daily_sales_summary():

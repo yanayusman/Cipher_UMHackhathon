@@ -6,6 +6,7 @@ from logic import(
     get_simple_suggestion
 )
 
+
 st.set_page_config(page_title = "MEX Assistant", page_icon = "=")
 st.title("MEX Assistant - AI Business Assistant")
 st.write("Hi there!! Ask me about your sales, stock or tips to improve your business.")
