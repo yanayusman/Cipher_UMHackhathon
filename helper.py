@@ -74,54 +74,53 @@ class BusinessAnalytics:
     
     def get_top_3_items(self, days=7, metric='revenue'):
         """Get top 3 items with detailed metrics"""
-        # Get recent transactions
-        recent_date = self.transaction_data['order_time'].max()
-        start_date = recent_date - timedelta(days=days)
-        
-        recent_transactions = self.transaction_data[
-            self.transaction_data['order_time'] >= start_date
-        ]
-        
-        # Merge with items and calculate metrics
-        recent_items = self.merged_data[
-            self.merged_data['order_id'].isin(recent_transactions['order_id'])
-        ]
-        
-        # Calculate various metrics
-        item_metrics = (
-            recent_items.groupby('item_name')
-            .agg({
-                'quantity': ['sum', 'mean', 'count'],
-                'price': 'mean'
-            })
-        )
-        
-        # Calculate derived metrics
-        item_metrics['revenue'] = item_metrics[('quantity', 'sum')] * item_metrics[('price', 'mean')]
-        item_metrics['avg_order_quantity'] = item_metrics[('quantity', 'sum')] / item_metrics[('quantity', 'count')]
-        
-        # Sort by selected metric
-        if metric == 'revenue':
-            sorted_items = item_metrics.sort_values('revenue', ascending=False)
-        elif metric == 'quantity':
-            sorted_items = item_metrics.sort_values(('quantity', 'sum'), ascending=False)
-        elif metric == 'orders':
-            sorted_items = item_metrics.sort_values(('quantity', 'count'), ascending=False)
-        
-        # Format results
-        top_items = []
-        for item_name in sorted_items.head(3).index:
-            metrics = sorted_items.loc[item_name]
-            top_items.append({
-                'item_name': item_name,
-                'total_quantity': int(metrics[('quantity', 'sum')]),
-                'avg_quantity_per_order': round(metrics['avg_order_quantity'], 2),
-                'price': round(metrics[('price', 'mean')], 2),
-                'revenue': round(metrics['revenue'], 2),
-                'order_count': int(metrics[('quantity', 'count')])
-            })
-        
-        return top_items
+        try:
+            # Get recent transactions
+            recent_date = self.transaction_data['order_time'].max()
+            start_date = recent_date - timedelta(days=days)
+            
+            recent_transactions = self.transaction_data[
+                self.transaction_data['order_time'] >= start_date
+            ]
+            
+            # Merge with items and calculate metrics
+            recent_items = self.merged_data[
+                self.merged_data['order_id'].isin(recent_transactions['order_id'])
+            ]
+            
+            # Calculate various metrics
+            item_metrics = (
+                recent_items.groupby('item_name')
+                .agg({
+                    'order_id': 'count',  # Number of times item was ordered
+                    'item_price': 'mean'  # Average price of the item
+                })
+            )
+            
+            # Calculate revenue
+            item_metrics['revenue'] = item_metrics['order_id'] * item_metrics['item_price']
+            
+            # Sort by selected metric
+            if metric == 'revenue':
+                sorted_items = item_metrics.sort_values('revenue', ascending=False)
+            elif metric == 'orders':
+                sorted_items = item_metrics.sort_values('order_id', ascending=False)
+            
+            # Format results
+            top_items = []
+            for item_name in sorted_items.head(3).index:
+                metrics = sorted_items.loc[item_name]
+                top_items.append({
+                    'item_name': item_name,
+                    'total_orders': int(metrics['order_id']),
+                    'price': round(metrics['item_price'], 2),
+                    'revenue': round(metrics['revenue'], 2)
+                })
+            
+            return top_items
+        except Exception as e:
+            print(f"Error in get_top_3_items: {str(e)}")
+            return []
     
     def get_low_stock_alerts(self, threshold_days=3):
         """Get low stock alerts with advanced predictive analysis"""
@@ -213,7 +212,7 @@ class BusinessAnalytics:
         
         # Get top and bottom performing items
         top_items = self.get_top_3_items(metric='revenue')
-        bottom_items = self.get_top_3_items(metric='revenue', ascending=True)
+        bottom_items = self.get_top_3_items(metric='orders')
         
         # Generate data-driven suggestions
         best_day = daily_sales[('order_value', 'sum')].idxmax()
@@ -221,12 +220,14 @@ class BusinessAnalytics:
         peak_hour = hourly_sales.idxmax()
         
         # Base suggestions from data analysis
-        suggestions.extend([
-            f"Your best-selling item is {top_items[0]['item_name']} with RM{top_items[0]['revenue']:.2f} revenue. Consider promoting it more!",
-            f"Sales peak on {best_day}s (RM{daily_sales.loc[best_day, ('order_value', 'sum')]:.2f}). Consider special promotions on {worst_day}s to boost sales.",
-            f"Busiest hour is {peak_hour}:00. Consider staffing adjustments during peak times.",
-            f"Bundle {top_items[0]['item_name']} with {bottom_items[0]['item_name']} to increase sales of slower-moving items."
-        ])
+        if top_items:
+            suggestions.extend([
+                f"Your best-selling item is {top_items[0]['item_name']} with RM{top_items[0]['revenue']:.2f} revenue. Consider promoting it more!",
+                f"Sales peak on {best_day}s (RM{daily_sales.loc[best_day, ('order_value', 'sum')]:.2f}). Consider special promotions on {worst_day}s to boost sales.",
+                f"Busiest hour is {peak_hour}:00. Consider staffing adjustments during peak times.",
+            ])
+            if bottom_items:
+                suggestions.append(f"Bundle {top_items[0]['item_name']} with {bottom_items[-1]['item_name']} to increase sales of slower-moving items.")
         
         # Merchant type specific suggestions
         if merchant_type == "Restaurant":
@@ -301,15 +302,30 @@ class BusinessAnalytics:
             prev_year_sales = prev_year_data['order_value'].sum() if not prev_year_data.empty else 0
             year_over_year_growth = ((total_sales - prev_year_sales) / prev_year_sales * 100) if prev_year_sales > 0 else 0
             
+            # Format monthly data for display
+            monthly_breakdown = {}
+            for month in range(1, 13):
+                if month in monthly_sales.index:
+                    data = monthly_sales.loc[month]
+                    monthly_breakdown[month] = {
+                        'sales': data[('order_value', 'sum')],
+                        'orders': data[('order_id', 'nunique')]
+                    }
+                else:
+                    monthly_breakdown[month] = {
+                        'sales': 0,
+                        'orders': 0
+                    }
+            
             return {
                 'year': year,
                 'total_sales': total_sales,
                 'total_orders': total_orders,
                 'average_order_value': avg_order_value,
-                'monthly_breakdown': monthly_sales,
+                'monthly_breakdown': monthly_breakdown,
                 'year_over_year_growth': year_over_year_growth,
-                'best_month': monthly_sales[('order_value', 'sum')].idxmax(),
-                'worst_month': monthly_sales[('order_value', 'sum')].idxmin()
+                'best_month': monthly_sales[('order_value', 'sum')].idxmax() if not monthly_sales.empty else None,
+                'worst_month': monthly_sales[('order_value', 'sum')].idxmin() if not monthly_sales.empty else None
             }
             
         except Exception as e:
@@ -347,22 +363,40 @@ class BusinessAnalytics:
 
     def get_customer_behavior_insights(self):
         """Analyze customer behavior patterns and preferences"""
-        # Merge transaction data with items to get complete order information
-        customer_data = self.transaction_data.merge(
-            self.merged_data,
-            on='order_id',
-            how='left'
-        )
-        
-        # Calculate customer metrics
-        customer_metrics = {
-            'average_order_value': customer_data.groupby('order_id')['order_value'].sum().mean(),
-            'average_items_per_order': customer_data.groupby('order_id')['quantity'].sum().mean(),
-            'peak_hours': customer_data.groupby(customer_data['order_time'].dt.hour)['order_id'].count().sort_values(ascending=False).head(3),
-            'popular_cuisines': customer_data.groupby('cuisine_tag')['order_id'].count().sort_values(ascending=False).head(3)
-        }
-        
-        return customer_metrics
+        try:
+            # Get unique orders by hour
+            hourly_orders = (
+                self.transaction_data
+                .groupby(self.transaction_data['order_time'].dt.hour)['order_id']
+                .nunique()  # Count unique orders per hour
+                .sort_values(ascending=False)
+            )
+            
+            # Get top 3 hours with most unique orders
+            peak_hours = hourly_orders.head(3).to_dict()
+            
+            # Calculate total unique orders for percentage calculation
+            total_unique_orders = self.transaction_data['order_id'].nunique()
+            
+            # Calculate customer metrics
+            customer_metrics = {
+                'average_order_value': self.transaction_data.groupby('order_id')['order_value'].sum().mean(),
+                'average_items_per_order': self.merged_data.groupby('order_id')['item_id'].count().mean(),
+                'peak_hours': peak_hours,
+                'total_orders': total_unique_orders,
+                'popular_cuisines': self.merged_data.groupby('cuisine_tag')['order_id'].count().sort_values(ascending=False).head(3).to_dict()
+            }
+            
+            return customer_metrics
+        except Exception as e:
+            print(f"Error in get_customer_behavior_insights: {str(e)}")
+            return {
+                'average_order_value': 0,
+                'average_items_per_order': 0,
+                'peak_hours': {},
+                'total_orders': 0,
+                'popular_cuisines': {}
+            }
 
     def get_seasonal_trends(self):
         """Analyze seasonal patterns in sales and customer behavior"""
@@ -390,7 +424,7 @@ class BusinessAnalytics:
 
     def get_profitability_analysis(self):
         """Analyze profitability of different items and categories"""
-        # Merge transaction data with items to get cost information
+        # Merge transaction data with items to get complete order information
         profitability_data = self.merged_data.merge(
             self.transaction_data[['order_id', 'order_value']],
             on='order_id',
@@ -399,16 +433,24 @@ class BusinessAnalytics:
         
         # Calculate item-level profitability
         item_profitability = profitability_data.groupby('item_name').agg({
-            'quantity': 'sum',
-            'price': 'mean',
-            'order_value': 'sum'
+            'order_id': 'count',  # Number of times item was ordered
+            'item_price': 'mean',  # Average price of the item
+            'order_value': 'sum'   # Total revenue from the item
+        }).rename(columns={
+            'order_id': 'total_orders',
+            'item_price': 'average_price',
+            'order_value': 'total_revenue'
         })
         
         # Calculate category-level profitability
         category_profitability = profitability_data.groupby('cuisine_tag').agg({
-            'quantity': 'sum',
-            'price': 'mean',
-            'order_value': 'sum'
+            'order_id': 'count',  # Number of orders in category
+            'item_price': 'mean',  # Average price in category
+            'order_value': 'sum'   # Total revenue in category
+        }).rename(columns={
+            'order_id': 'total_orders',
+            'item_price': 'average_price',
+            'order_value': 'total_revenue'
         })
         
         return {
@@ -443,34 +485,43 @@ class BusinessAnalytics:
         return suggestions
 
     def get_promotion_effectiveness(self):
-        """Analyze the effectiveness of past promotions"""
-        # Get promotion data from transaction data
-        promotion_data = self.transaction_data[
-            self.transaction_data['promotion_id'].notna()
-        ]
-        
-        if promotion_data.empty:
-            return "No promotion data available for analysis"
-        
-        # Calculate promotion metrics
-        promotion_metrics = {
-            'total_promotions': len(promotion_data['promotion_id'].unique()),
-            'average_discount': promotion_data['discount_amount'].mean(),
-            'promotion_sales': promotion_data['order_value'].sum(),
-            'promotion_orders': len(promotion_data)
-        }
-        
-        # Compare with non-promotion periods
-        non_promotion_data = self.transaction_data[
-            self.transaction_data['promotion_id'].isna()
-        ]
-        
-        promotion_metrics['lift_in_sales'] = (
-            (promotion_metrics['promotion_sales'] / promotion_metrics['promotion_orders']) /
-            (non_promotion_data['order_value'].sum() / len(non_promotion_data))
-        ) - 1
-        
-        return promotion_metrics
+        """Analyze the effectiveness of promotions based on order patterns"""
+        try:
+            # Get the most recent 30 days of data for analysis
+            recent_date = self.transaction_data['order_time'].max()
+            start_date = recent_date - pd.Timedelta(days=30)
+            
+            recent_data = self.transaction_data[
+                self.transaction_data['order_time'] >= start_date
+            ]
+            
+            # Calculate average order value for the period
+            avg_order_value = recent_data['order_value'].mean()
+            
+            # Identify potential promotional periods (days with higher than average sales)
+            daily_sales = recent_data.groupby(recent_data['order_time'].dt.date)['order_value'].sum()
+            avg_daily_sales = daily_sales.mean()
+            std_daily_sales = daily_sales.std()
+            
+            # Consider days with sales 1.5 standard deviations above mean as potential promotional days
+            promotional_days = daily_sales[daily_sales > (avg_daily_sales + 1.5 * std_daily_sales)]
+            
+            if len(promotional_days) == 0:
+                return "No significant promotional activity detected in the last 30 days"
+            
+            # Calculate metrics for promotional days
+            promo_metrics = {
+                'total_promotional_days': len(promotional_days),
+                'average_sales_on_promo': promotional_days.mean(),
+                'highest_sales_day': promotional_days.max(),
+                'lift_in_sales': ((promotional_days.mean() - avg_daily_sales) / avg_daily_sales * 100),
+                'best_promo_day': promotional_days.idxmax().strftime("%Y-%m-%d")
+            }
+            
+            return promo_metrics
+            
+        except Exception as e:
+            return f"Error analyzing promotion effectiveness: {str(e)}"
 
 # Example usage
 if __name__ == "__main__":
