@@ -19,6 +19,12 @@ data = load_data()
 
 def process_query(query, merchant_id=None, date_param=None):
     """Process user queries and return appropriate responses"""
+    # Load data if not already loaded
+    if 'data' not in st.session_state:
+        st.session_state.data = load_data()
+    
+    data = st.session_state.data
+    
     # Check for sales-related queries
     sales_keywords = [
         "sales", "how much", "revenue", "earnings", "income",
@@ -241,26 +247,135 @@ def process_query(query, merchant_id=None, date_param=None):
     
     # Handle inventory queries
     elif any(word in query for word in ["inventory", "stock", "supply", "restock"]):
-        suggestions = analytics.get_inventory_optimization_suggestions()
-        if suggestions:
-            st.markdown("**Inventory Optimization Suggestions:**")
-            for suggestion in suggestions:
-                st.write(suggestion)
+        # Get low stock alerts using the analytics object
+        alerts = analytics.get_low_stock_alerts()
+        
+        if alerts and isinstance(alerts, list) and len(alerts) > 0 and isinstance(alerts[0], dict):
+            st.markdown("**📦 Inventory Alerts**")
+            
+            # Create a container for alerts
+            alert_container = st.container()
+            
+            # Group alerts by risk level
+            urgent_alerts = [alert for alert in alerts if alert['risk_level'] == "URGENT"]
+            high_alerts = [alert for alert in alerts if alert['risk_level'] == "HIGH"]
+            
+            # Display urgent alerts first
+            if urgent_alerts:
+                st.error("🚨 **Urgent Stock Alerts**")
+                for alert in urgent_alerts:
+                    with st.expander(f"⚠️ {alert['item']}", expanded=True):
+                        st.markdown(f"""
+                        - **Total Sales**: {alert['current_sales']}
+                        - **Average Daily Sales**: {alert['avg_daily_sales']:.1f}
+                        - **Days Until Stockout**: 
+                          - Optimistic: {round(alert['days_until_stockout']['optimistic'])} days
+                          - Pessimistic: {round(alert['days_until_stockout']['pessimistic'])} days
+                        - **Recommendation**: {alert['suggestion']}
+                        """)
+            
+            # Display high risk alerts
+            if high_alerts:
+                st.warning("⚠️ **High Risk Stock Alerts**")
+                for alert in high_alerts:
+                    with st.expander(f"⚠️ {alert['item']}"):
+                        st.markdown(f"""
+                        - **Total Sales**: {alert['current_sales']}
+                        - **Average Daily Sales**: {alert['avg_daily_sales']:.1f}
+                        - **Days Until Stockout**: 
+                          - Optimistic: {round(alert['days_until_stockout']['optimistic'])} days
+                          - Pessimistic: {round(alert['days_until_stockout']['pessimistic'])} days
+                        - **Recommendation**: {alert['suggestion']}
+                        """)
+            
+            # Add summary statistics
+            st.markdown("**📊 Inventory Summary**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Alerts", len(alerts))
+            with col2:
+                st.metric("Urgent Alerts", len(urgent_alerts))
+            with col3:
+                st.metric("High Risk Alerts", len(high_alerts))
+            
+            # Add recommendations section
+            st.markdown("**💡 Recommendations**")
+            st.markdown("""
+            1. **Immediate Action Required**:
+               - Prioritize restocking items marked as URGENT
+               - Consider emergency orders for critical items
+               - Adjust menu availability if necessary
+            
+            2. **Short-term Planning**:
+               - Review and adjust reorder points for high-risk items
+               - Consider increasing safety stock levels
+               - Monitor sales velocity daily
+            
+            3. **Long-term Improvements**:
+               - Implement automated inventory tracking
+               - Set up alerts for low stock levels
+               - Review supplier lead times
+            """)
         else:
-            st.success("All inventory levels are optimal at this time.")
+            st.success("✅ All inventory levels are healthy!")
+            st.markdown("""
+            **💡 Proactive Inventory Management Tips:**
+            
+            1. **Regular Monitoring**:
+               - Check stock levels daily
+               - Review sales patterns weekly
+               - Update reorder points monthly
+            
+            2. **Best Practices**:
+               - Maintain safety stock levels
+               - Implement FIFO (First In, First Out)
+               - Regular supplier communication
+            
+            3. **Optimization**:
+               - Consider bulk ordering for high-volume items
+               - Review seasonal demand patterns
+               - Optimize storage space
+            """)
     
     # Handle promotion queries
     elif any(word in query for word in ["promotion", "discount", "offer", "deal"]):
         promotion_metrics = analytics.get_promotion_effectiveness()
+        
         if isinstance(promotion_metrics, dict):
-            st.markdown("**Promotion Effectiveness (Last 30 Days):**")
-            st.write(f"• Total Promotional Days: {promotion_metrics['total_promotional_days']}")
-            st.write(f"• Average Sales on Promotional Days: RM{promotion_metrics['average_sales_on_promo']:,.2f}")
-            st.write(f"• Highest Sales Day: RM{promotion_metrics['highest_sales_day']:,.2f}")
-            st.write(f"• Sales Lift: {promotion_metrics['lift_in_sales']:+.1f}%")
-            st.write(f"• Best Promotional Day: {promotion_metrics['best_promo_day']}")
+            if promotion_metrics.get('status') == 'no_promotions':
+                st.info(promotion_metrics['message'])
+                st.markdown("**📊 Baseline Performance (Last 30 Days):**")
+                st.write(f"• Average Daily Sales: RM{promotion_metrics['baseline_metrics']['average_daily_sales']:,.2f}")
+                st.write(f"• Average Orders per Day: {promotion_metrics['baseline_metrics']['average_orders_per_day']:.1f}")
+                st.write(f"• Average Unique Orders per Day: {promotion_metrics['baseline_metrics']['average_unique_orders']:.1f}")
+                
+                st.markdown("**💡 Promotion Suggestions:**")
+                st.write("1. Consider running promotions during slower days to boost sales")
+                st.write("2. Test different types of promotions (e.g., discounts, bundles, free items)")
+                st.write("3. Analyze peak hours and days to optimize promotion timing")
+            else:
+                st.markdown("**🎯 Promotion Performance (Last 30 Days):**")
+                
+                st.markdown("**📈 Promotional Days Summary:**")
+                st.write(f"• Total Promotional Days: {promotion_metrics['total_promotional_days']}")
+                st.write(f"• Average Sales on Promotional Days: RM{promotion_metrics['average_sales_on_promo']:,.2f}")
+                st.write(f"• Average Orders on Promotional Days: {promotion_metrics['average_orders_on_promo']:.1f}")
+                st.write(f"• Average Unique Orders on Promotional Days: {promotion_metrics['average_unique_orders_on_promo']:.1f}")
+                
+                st.markdown("**🏆 Best Performing Promotional Day:**")
+                st.write(f"• Date: {promotion_metrics['highest_sales_day']['date']}")
+                st.write(f"• Total Sales: RM{promotion_metrics['highest_sales_day']['sales']:,.2f}")
+                st.write(f"• Total Orders: {promotion_metrics['highest_sales_day']['orders']}")
+                
+                st.markdown("**📊 Sales Lift:**")
+                st.write(f"• Average Increase in Sales: {promotion_metrics['lift_in_sales']:+.1f}%")
+                
+                st.markdown("**📉 Baseline Performance:**")
+                st.write(f"• Average Daily Sales: RM{promotion_metrics['baseline_metrics']['average_daily_sales']:,.2f}")
+                st.write(f"• Average Orders per Day: {promotion_metrics['baseline_metrics']['average_orders_per_day']:.1f}")
+                st.write(f"• Average Unique Orders per Day: {promotion_metrics['baseline_metrics']['average_unique_orders']:.1f}")
         else:
-            st.warning(promotion_metrics)
+            st.error(promotion_metrics)
     
     # Handle help and greeting queries
     elif any(word in query for word in ["hi", "hello", "hey", "greetings"]):
@@ -322,8 +437,14 @@ def process_query(query, merchant_id=None, date_param=None):
         promo_metrics = analytics.get_promotion_effectiveness()
         if isinstance(promo_metrics, dict):
             st.markdown("### 🎯 Promotions & Marketing")
-            st.write(f"• Your best promotional day was {promo_metrics['best_promo_day']} with RM{promo_metrics['highest_sales_day']:,.2f} in sales")
-            st.write(f"• Promotions typically increase sales by {promo_metrics['lift_in_sales']:.1f}%")
+            if promo_metrics.get('status') == 'no_promotions':
+                st.write("• No significant promotional activity detected in the last 30 days")
+                st.write("• Consider running promotions during slower days to boost sales")
+                st.write("• Test different types of promotions (e.g., discounts, bundles, free items)")
+            else:
+                st.write(f"• Best promotional day was {promo_metrics['highest_sales_day']['date']} with RM{promo_metrics['highest_sales_day']['sales']:,.2f} in sales")
+                st.write(f"• Average sales lift during promotions: {promo_metrics['lift_in_sales']:+.1f}%")
+                st.write(f"• Total promotional days: {promo_metrics['total_promotional_days']}")
         
         # Get customer behavior insights
         customer_insights = analytics.get_customer_behavior_insights()
