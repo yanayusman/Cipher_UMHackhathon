@@ -690,8 +690,6 @@ merchant_id = st.session_state.merchant_id
 merchant_name = merchant_df[merchant_df["merchant_id"] == merchant_id]["merchant_name"].values[0]
 st.sidebar.markdown(f"**Logged in as:** {merchant_name}")
 
-# herereeee
-
 
 # Convert dataset order_time to datetime
 data["transaction_data"]["order_time"] = pd.to_datetime(data["transaction_data"]["order_time"])
