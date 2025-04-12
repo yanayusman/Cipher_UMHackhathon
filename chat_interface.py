@@ -36,11 +36,15 @@ st.set_page_config(
 # Sidebar for settings
 with st.sidebar:
     st.title("Settings")
+    
     selected_language = st.selectbox(
         "Select Language",
         options=list(LANGUAGES.keys()),
         index=0
     )
+
+    # Save to session
+    st.session_state.language = LANGUAGES[selected_language]
     
     # Merchant profile
     st.title("Merchant Profile")

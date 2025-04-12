@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from helper import BusinessAnalytics
 
 # Initialize BusinessAnalytics
-analytics = BusinessAnalytics()
+analytics = BusinessAnalytics(merchant_id=st.session_state.merchant_id)
 
 # Load data once at startup
 data = load_data()
