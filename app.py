@@ -1,4 +1,7 @@
 import streamlit as st
+import base64
+import pandas as pd
+
 from logic import(
     get_daily_sales_summary,
     get_top_selling_items,
@@ -9,13 +12,53 @@ from logic import(
 from data_loader import load_data
 from datetime import datetime, timedelta
 from helper import BusinessAnalytics
-import pandas as pd
 
 # Initialize BusinessAnalytics
 analytics = BusinessAnalytics()
 
 # Load data once at startup
 data = load_data()
+merchant_df = data["merchant"]
+
+# Session state to track login
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "merchant_id" not in st.session_state:
+    st.session_state.merchant_id = None
+
+# --- Login Page ---
+def login_page():
+    st.set_page_config(page_title="Login | MEX Assistant", page_icon="🔐")
+    st.title("🔐 MEX Assistant Login")
+
+    merchant_names = merchant_df["merchant_name"].unique().tolist()
+    username = st.selectbox("Select Merchant", merchant_names)
+
+    password = st.text_input("Enter Password", type="password")
+
+    # For simplicity, fixed password (you can enhance with hash or per-merchant login)
+    if st.button("Login"):
+        if password == "1234":  # 🔐 Replace with per-merchant password if needed
+            # Get the selected merchant_id
+            merchant_id = merchant_df[merchant_df["merchant_name"] == username]["merchant_id"].iloc[0]
+            st.session_state.logged_in = True
+            st.session_state.merchant_id = merchant_id
+            st.success("✅ Login successful!")
+            st.rerun()
+        else:
+            st.error("❌ Incorrect password. Try again.")
+
+# If not logged in, show login page only
+if not st.session_state.logged_in:
+    login_page()
+    st.stop()
+
+def get_img_as_base64(file_path):
+    with open(file_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+img_data = get_img_as_base64("Grab_white.png")
 
 def process_query(query, merchant_id=None, date_param=None):
     """Process user queries and return appropriate responses"""
@@ -600,12 +643,20 @@ st.image("160128grab02-600x300.png", width=150)
 st.title("MEX Assistant - AI Business Assistant")
 st.write("Hi there!! Ask me about your sales, stock or tips to improve your business.")
 
+with st.sidebar:
+    st.markdown(
+        f"""
+        <div style="text-align: center;">
+            <img src="data:image/png;base64,{img_data}" width="180">
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown("---")
 # Add sidebar for merchant selection
-merchant_id = st.sidebar.selectbox(
-    "Select Merchant",
-    options=data["merchant"]["merchant_name"].unique(),
-    format_func=lambda x: f"Merchant {x}"
-)
+merchant_id = st.session_state.merchant_id
+merchant_name = merchant_df[merchant_df["merchant_id"] == merchant_id]["merchant_name"].values[0]
+st.sidebar.markdown(f"**Logged in as:** {merchant_name}")
 
 # Convert dataset order_time to datetime
 data["transaction_data"]["order_time"] = pd.to_datetime(data["transaction_data"]["order_time"])
@@ -645,8 +696,11 @@ with col2:
 # Final selected date for logic
 date_param = st.session_state.selected_date.strftime("%Y-%m-%d")
 
-
-
+# Add logout button
+if st.sidebar.button("🔓 Log Out"):
+    st.session_state.logged_in = False
+    st.session_state.merchant_id = None
+    st.rerun()
 
 # Add help section
 with st.expander("💡 What can I ask?"):
