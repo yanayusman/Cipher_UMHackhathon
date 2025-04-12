@@ -589,10 +589,14 @@ st.set_page_config(page_title="MEX Assistant", page_icon="=")
 st.markdown("""
     <style>
         [data-testid="stSidebar"] {
-            background-color: #00B14F; /* light green */
+            background-color: #00B14F; 
         }
     </style>
 """, unsafe_allow_html=True)
+
+
+st.image("160128grab02-600x300.png", width=150)
+
 st.title("MEX Assistant - AI Business Assistant")
 st.write("Hi there!! Ask me about your sales, stock or tips to improve your business.")
 
