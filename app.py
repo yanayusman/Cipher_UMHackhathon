@@ -383,7 +383,7 @@ def process_query(query, merchant_id=None, date_param=None):
     
     elif any(word in query for word in ["help", "what can you do", "capabilities"]):
         st.markdown("""
-        I can help you with:
+        Definitely!! I can help you with:
         
         **Sales Information**
         - Daily, weekly, monthly, and yearly sales
@@ -585,6 +585,14 @@ def process_query(query, merchant_id=None, date_param=None):
 
 # Streamlit UI
 st.set_page_config(page_title="MEX Assistant", page_icon="=")
+# Inject custom CSS to make sidebar green
+st.markdown("""
+    <style>
+        [data-testid="stSidebar"] {
+            background-color: #00B14F; /* light green */
+        }
+    </style>
+""", unsafe_allow_html=True)
 st.title("MEX Assistant - AI Business Assistant")
 st.write("Hi there!! Ask me about your sales, stock or tips to improve your business.")
 
