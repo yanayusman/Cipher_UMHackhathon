@@ -4,13 +4,14 @@ from datetime import datetime, timedelta
 from data_loader import load_data
 
 class BusinessAnalytics:
-    def __init__(self):
+    def __init__(self, merchant_id=None):
         data = load_data()
         self.transaction_data = data["transaction_data"]
         self.transaction_items = data["transaction_items"]
         self.merchant = data["merchant"]
         self.items = data["items"]
         self.keywords = data["keywords"]
+        self.merchant_id = merchant_id
         
         # Convert date columns to datetime
         self.transaction_data['order_time'] = pd.to_datetime(self.transaction_data['order_time'])
@@ -79,8 +80,10 @@ class BusinessAnalytics:
             recent_date = self.transaction_data['order_time'].max()
             start_date = recent_date - timedelta(days=days)
             
+            # Filter by merchant and date
             recent_transactions = self.transaction_data[
-                self.transaction_data['order_time'] >= start_date
+                (self.transaction_data['order_time'] >= start_date) &
+                (self.transaction_data['merchant_id'] == self.merchant_id)
             ]
             
             # Merge with items and calculate metrics
@@ -208,10 +211,20 @@ class BusinessAnalytics:
         """Generate personalized business suggestions with data-driven insights"""
         suggestions = []
         
-        # Get sales patterns and metrics
+        # Get merchant-specific data
+        merchant_data = self.transaction_data[self.transaction_data['merchant_id'] == self.merchant_id]
+        
+        if merchant_data.empty:
+            return ["No data available for this merchant. Please check back later."]
+        
+        # Calculate merchant's total sales and average order value
+        total_sales = merchant_data['order_value'].sum()
+        avg_order_value = merchant_data['order_value'].mean()
+        
+        # Get merchant's sales patterns
         daily_sales = (
-            self.transaction_data.groupby(
-                self.transaction_data['order_time'].dt.day_name()
+            merchant_data.groupby(
+                merchant_data['order_time'].dt.day_name()
             ).agg({
                 'order_value': ['sum', 'count'],
                 'order_id': 'nunique'
@@ -219,21 +232,21 @@ class BusinessAnalytics:
         )
         
         hourly_sales = (
-            self.transaction_data.groupby(
-                self.transaction_data['order_time'].dt.hour
+            merchant_data.groupby(
+                merchant_data['order_time'].dt.hour
             )['order_value'].sum()
         )
         
-        # Get top and bottom performing items
+        # Get merchant's top and bottom performing items
         top_items = self.get_top_3_items(metric='revenue')
         bottom_items = self.get_top_3_items(metric='orders')
         
-        # Generate data-driven suggestions
+        # Generate data-driven suggestions based on merchant's performance
         best_day = daily_sales[('order_value', 'sum')].idxmax()
         worst_day = daily_sales[('order_value', 'sum')].idxmin()
         peak_hour = hourly_sales.idxmax()
         
-        # Base suggestions from data analysis
+        # Base suggestions from merchant's data analysis
         if top_items:
             suggestions.extend([
                 f"Your best-selling item is {top_items[0]['item_name']} with RM{top_items[0]['revenue']:.2f} revenue. Consider promoting it more!",
@@ -242,6 +255,40 @@ class BusinessAnalytics:
             ])
             if bottom_items:
                 suggestions.append(f"Bundle {top_items[0]['item_name']} with {bottom_items[-1]['item_name']} to increase sales of slower-moving items.")
+        
+        # Performance-based suggestions
+        if total_sales < 10000:  # Low-performing merchant
+            suggestions.extend([
+                "Consider running daily specials to attract more customers",
+                "Offer a loyalty program to encourage repeat customers",
+                "Focus on improving your average order value through upselling"
+            ])
+        elif total_sales < 50000:  # Medium-performing merchant
+            suggestions.extend([
+                "Implement a tiered pricing strategy for different customer segments",
+                "Consider expanding your delivery radius to reach more customers",
+                "Run targeted promotions during your slowest hours"
+            ])
+        else:  # High-performing merchant
+            suggestions.extend([
+                "Consider opening a second location in a high-demand area",
+                "Implement a premium menu with higher-margin items",
+                "Launch a subscription service for regular customers"
+            ])
+        
+        # Average order value based suggestions
+        if avg_order_value < 20:
+            suggestions.extend([
+                "Consider adding combo meals to increase average order value",
+                "Implement a minimum order value for delivery",
+                "Offer free delivery for orders above a certain amount"
+            ])
+        elif avg_order_value > 50:
+            suggestions.extend([
+                "Focus on premium ingredients and presentation",
+                "Consider offering catering services",
+                "Implement a VIP customer program"
+            ])
         
         # Merchant type specific suggestions
         if merchant_type == "Restaurant":
