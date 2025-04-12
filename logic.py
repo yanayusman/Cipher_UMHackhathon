@@ -16,9 +16,6 @@ transaction_items = data["transaction_items"]
 # merge items and transaction_items for next operation
 merged_data = transaction_items.merge(items, on = "item_id", how = "left")
 
-# print(transaction_data.columns)  # To check if 'order_value' exists
-# print(transaction_data.head())  # To see the first few rows and ensure the data is correct
-
 def get_merged_data(data):
     """Helper function to merge transaction items with items data"""
     return data["transaction_items"].merge(
@@ -28,46 +25,45 @@ def get_merged_data(data):
     )
 
 def get_daily_sales_summary(date_str=None):
-    """Get daily sales summary with detailed metrics based on selected date."""
+    """Get daily sales summary with detailed metrics based on selected date and merchant."""
     try:
-        # If no date provided, use the selected date from session state
+        # Use selected date from session if not provided
         if date_str is None:
             date_str = st.session_state.selected_date.strftime("%Y-%m-%d")
-        
+
+        # Get current merchant ID from session
+        merchant_id = st.session_state.merchant_id
+
         # Convert to datetime object
         current_date = datetime.strptime(date_str, "%Y-%m-%d")
-
-        # Yesterday = the day before selected date
         yesterday_date = current_date - timedelta(days=1)
         yesterday = yesterday_date.strftime("%Y-%m-%d")
 
-        # (Optional) Tomorrow if you ever want to use it
-        tomorrow_date = current_date + timedelta(days=1)
-        tomorrow = tomorrow_date.strftime("%Y-%m-%d")
-
-        # Get sales data for the selected date
+        # Filter by date AND merchant
         daily_data = analytics.transaction_data[
-            analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == date_str
+            (analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == date_str) &
+            (analytics.transaction_data['merchant_id'] == merchant_id)
         ]
 
         if daily_data.empty:
-            return f"No sales data available for {date_str}"
+            return f"No sales data available for {date_str} (Merchant: {merchant_id})"
 
-        # Sales calculations
+        # Metrics for selected date
         total_sales = daily_data['order_value'].sum()
         num_orders = len(daily_data)
         avg_order_value = total_sales / num_orders if num_orders > 0 else 0
 
-        # Get yesterday's data for comparison
+        # Yesterday's data for the same merchant
         yesterday_data = analytics.transaction_data[
-            analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == yesterday
+            (analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == yesterday) &
+            (analytics.transaction_data['merchant_id'] == merchant_id)
         ]
         yesterday_sales = yesterday_data['order_value'].sum() if not yesterday_data.empty else 0
 
-        # Calculate growth
+        # Growth calculation
         growth = ((total_sales - yesterday_sales) / yesterday_sales * 100) if yesterday_sales > 0 else 0
 
-        return f"""📊 Sales Summary for {date_str}:
+        return f"""📊 Sales Summary for {date_str} (Merchant: {merchant_id}):
 • Total Sales: RM{total_sales:,.2f}
 • Number of Orders: {num_orders}
 • Average Order Value: RM{avg_order_value:,.2f}
@@ -75,6 +71,30 @@ def get_daily_sales_summary(date_str=None):
 
     except Exception as e:
         return f"Error calculating daily sales summary: {str(e)}"
+
+def get_sales_trend_for_merchant(days=7):
+    """Return last N days of sales for the current merchant."""
+    try:
+        merchant_id = st.session_state.merchant_id
+        end_date = st.session_state.selected_date
+        start_date = end_date - timedelta(days=days - 1)
+
+        # Filter transaction data for the date range and merchant
+        df = analytics.transaction_data.copy()
+        df = df[(df["order_time"].dt.date >= start_date) &
+                (df["order_time"].dt.date <= end_date) &
+                (df["merchant_id"] == merchant_id)]
+
+        # Group by date and sum order values
+        daily_sales = df.groupby(df["order_time"].dt.date)["order_value"].sum().reset_index()
+        daily_sales.columns = ["Date", "Total Sales (RM)"]
+        daily_sales = daily_sales.sort_values("Date")
+
+        return daily_sales
+
+    except Exception as e:
+        st.error(f"Error generating sales trend: {e}")
+        return pd.DataFrame(columns=["Date", "Total Sales (RM)"])
 
 def get_top_selling_items(top_n=3, date_str=None):
     """Get top selling items with detailed metrics"""

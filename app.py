@@ -7,7 +7,8 @@ from logic import(
     get_top_selling_items,
     get_low_stock_alerts,
     get_simple_suggestion,
-    get_sales_trends
+    get_sales_trends,
+    get_sales_trend_for_merchant
 )
 from data_loader import load_data
 from datetime import datetime, timedelta
@@ -189,6 +190,15 @@ def process_query(query, merchant_id=None, date_param=None):
             top_items = get_top_selling_items(date_str=date_param)
             for item in top_items:
                 st.info(item)
+
+        elif any(word in query for word in ["trend", "graph", "chart", "sales trend", "sales graph"]):
+            st.markdown("### 📈 Sales Trend (Last 7 Days)")
+            trend_data = get_sales_trend_for_merchant()
+            if not trend_data.empty:
+                st.line_chart(trend_data.set_index("Date"))
+            else:
+                st.warning("Not enough data to show trend.")
+
         
         # Handle monthly sales queries
         elif any(phrase in query for phrase in ["monthly sales", "sales by month", "monthly revenue"]):
@@ -241,6 +251,7 @@ def process_query(query, merchant_id=None, date_param=None):
                 st.warning(summary)
             else:
                 st.success(summary)
+        
     
     # Handle customer behavior queries
     elif any(word in query for word in ["customer", "behavior", "pattern", "preference"]):
@@ -510,6 +521,16 @@ def process_query(query, merchant_id=None, date_param=None):
         for category, metrics in profitability['category_profitability'].head(3).iterrows():
             st.write(f"  - {category}: RM{metrics['total_revenue']:,.2f} revenue")
     
+    elif any(word in query for word in ["trend", "graph", "chart", "sales trend", "sales graph"]):
+        st.markdown("### 📈 Sales Trend (Last 7 Days)")
+
+        trend_data = get_sales_trend_for_merchant()
+
+        if not trend_data.empty:
+            st.line_chart(trend_data.set_index("Date"))
+        else:
+            st.warning("Not enough data to show trend.")
+
     # Handle day performance queries
     elif any(phrase in query for phrase in ["best day", "worst day", "best performing", "worst performing", "best and worst"]):
         # Get daily sales patterns
