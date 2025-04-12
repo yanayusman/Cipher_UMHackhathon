@@ -1,4 +1,5 @@
- import streamlit as st
+import streamlit as st
+
 from logic import (
     get_daily_sales_summary,
     get_top_selling_items,

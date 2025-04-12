@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#00B14F"              # Grab Green
+backgroundColor = "#FFFFFF"           # Clean white background
+secondaryBackgroundColor = "#F6F7F8"  # Light grey cards
+textColor = "#1D1D1F"                 # Near black for readability
+font = "sans serif"

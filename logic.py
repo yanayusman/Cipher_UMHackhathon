@@ -14,8 +14,8 @@ transaction_items = data["transaction_items"]
 # merge items and transaction_items for next operation
 merged_data = transaction_items.merge(items, on = "item_id", how = "left")
 
-print(transaction_data.columns)  # To check if 'order_value' exists
-print(transaction_data.head())  # To see the first few rows and ensure the data is correct
+# print(transaction_data.columns)  # To check if 'order_value' exists
+# print(transaction_data.head())  # To see the first few rows and ensure the data is correct
 
 def get_merged_data(data):
     """Helper function to merge transaction items with items data"""
