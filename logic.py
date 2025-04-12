@@ -72,12 +72,13 @@ def get_daily_sales_summary(date_str=None):
         trend_emoji = "📉" if growth < 0 else "📈" if growth > 0 else "➖"
 
         return f"""📊 **Sales Summary – {display_date}**
-Merchant ID: {merchant_id}
-
-• Total Sales: **RM{total_sales:,.2f}**
-• Orders Received: **{num_orders}**
-• Average Order Value: **RM{avg_order_value:,.2f}**
-• Growth vs Previous Day ({display_yesterday}): {trend_emoji} {trend_indicator} {abs(growth):.1f}%"""
+**Merchant ID:** {merchant_id}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• **Total Sales:** RM{total_sales:,.2f}
+• **Orders Received:** {num_orders}
+• **Average Order Value:** RM{avg_order_value:,.2f}
+• **Growth vs Previous Day** ({display_yesterday}):
+  {trend_emoji} {trend_indicator} {abs(growth):.1f}%"""
 
     except Exception as e:
         return f"Error calculating daily sales summary: {str(e)}"
