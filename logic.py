@@ -1,5 +1,7 @@
-from data_loader import load_data
 import pandas as pd
+import streamlit as st
+
+from data_loader import load_data
 from datetime import datetime, timedelta
 from helper import BusinessAnalytics
 
