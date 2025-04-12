@@ -38,8 +38,7 @@ def login_page():
 
     # For simplicity, fixed password (you can enhance with hash or per-merchant login)
     if st.button("Login"):
-        if password == "1234":  # 🔐 Replace with per-merchant password if needed
-            # Get the selected merchant_id
+        if password == "1234":  
             merchant_id = merchant_df[merchant_df["merchant_name"] == username]["merchant_id"].iloc[0]
             st.session_state.logged_in = True
             st.session_state.merchant_id = merchant_id
@@ -638,7 +637,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-st.image("160128grab02-600x300.png", width=150)
+st.image("grab-merchant.png", width=150)
 
 st.title("MEX Assistant - AI Business Assistant")
 st.write("Hi there!! Ask me about your sales, stock or tips to improve your business.")
@@ -647,7 +646,7 @@ with st.sidebar:
     st.markdown(
         f"""
         <div style="text-align: center;">
-            <img src="data:image/png;base64,{img_data}" width="180">
+            <img src="data:image/png;base64,{img_data}" width="250">
         </div>
         """,
         unsafe_allow_html=True

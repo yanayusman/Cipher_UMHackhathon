@@ -26,44 +26,51 @@ def get_merged_data(data):
     )
 
 def get_daily_sales_summary(date_str=None):
-    """Get daily sales summary with detailed metrics"""
+    """Get daily sales summary with detailed metrics based on selected date."""
     try:
-        # Get current date if none provided
+        # If no date provided, use the selected date from session state
         if date_str is None:
-            date_str = datetime.now().strftime("%Y-%m-%d")
+            date_str = st.session_state.selected_date.strftime("%Y-%m-%d")
         
-        # Convert date string to datetime for calculations
+        # Convert to datetime object
         current_date = datetime.strptime(date_str, "%Y-%m-%d")
-        yesterday = (current_date - timedelta(days=1)).strftime("%Y-%m-%d")
-        
-        # Get sales data for the specified date
+
+        # Yesterday = the day before selected date
+        yesterday_date = current_date - timedelta(days=1)
+        yesterday = yesterday_date.strftime("%Y-%m-%d")
+
+        # (Optional) Tomorrow if you ever want to use it
+        tomorrow_date = current_date + timedelta(days=1)
+        tomorrow = tomorrow_date.strftime("%Y-%m-%d")
+
+        # Get sales data for the selected date
         daily_data = analytics.transaction_data[
             analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == date_str
         ]
-        
+
         if daily_data.empty:
             return f"No sales data available for {date_str}"
-        
-        # Calculate metrics
+
+        # Sales calculations
         total_sales = daily_data['order_value'].sum()
         num_orders = len(daily_data)
         avg_order_value = total_sales / num_orders if num_orders > 0 else 0
-        
+
         # Get yesterday's data for comparison
         yesterday_data = analytics.transaction_data[
             analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == yesterday
         ]
         yesterday_sales = yesterday_data['order_value'].sum() if not yesterday_data.empty else 0
-        
+
         # Calculate growth
         growth = ((total_sales - yesterday_sales) / yesterday_sales * 100) if yesterday_sales > 0 else 0
-        
+
         return f"""📊 Sales Summary for {date_str}:
 • Total Sales: RM{total_sales:,.2f}
 • Number of Orders: {num_orders}
 • Average Order Value: RM{avg_order_value:,.2f}
-• Growth vs Yesterday: {growth:+.1f}%"""
-    
+• Growth vs Previous Day ({yesterday}): {growth:+.1f}%"""
+
     except Exception as e:
         return f"Error calculating daily sales summary: {str(e)}"
 
