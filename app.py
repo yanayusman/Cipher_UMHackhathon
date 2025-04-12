@@ -700,7 +700,7 @@ max_date = data["transaction_data"]["order_time"].max().date()
 
 # Initialize date in session state if not present
 if "selected_date" not in st.session_state:
-    st.session_state.selected_date = max_date  # or datetime.now().date()
+    st.session_state.selected_date = max_date  
 
 # Date input at the top
 selected_date = st.sidebar.date_input(
@@ -728,7 +728,11 @@ with col2:
         if new_date <= max_date:
             st.session_state.selected_date = new_date
 
-    LANGUAGES = {
+    
+
+# Final selected date for logic
+date_param = st.session_state.selected_date.strftime("%Y-%m-%d")
+LANGUAGES = {
         'English': 'en',
         'Bahasa Melayu': 'ms',
         '中文': 'zh',
@@ -736,17 +740,14 @@ with col2:
         'ภาษาไทย': 'th'
     }
 
-    selected_language = st.selectbox(
+selected_language = st.sidebar.selectbox(
         "🌐 Select Language",
         options=list(LANGUAGES.keys()),
         index=0  
     )
 
     # Store selected language code in session state
-    st.session_state.language = LANGUAGES[selected_language]
-
-# Final selected date for logic
-date_param = st.session_state.selected_date.strftime("%Y-%m-%d")
+st.session_state.language = LANGUAGES[selected_language]
 
 # Add logout button
 if st.sidebar.button("🔓 Log Out"):
