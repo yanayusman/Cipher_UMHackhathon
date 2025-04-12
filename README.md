@@ -2,6 +2,11 @@
 
 MEX Assistant is an intelligent chat-based AI assistant designed to help Grab merchant-partners (MEX) make better business decisions through real-time insights and personalized guidance.
 
+## Presentation Slides, Demo Video and Documentation can be found here:
+```
+https://drive.google.com/drive/folders/1DSLjceEUFvc8DS12Rmz7tmuSBVfDzGII?usp=drive_link 
+```
+
 ## Features
 
 - **Real-time Business Insights**
