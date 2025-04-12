@@ -673,10 +673,25 @@ with st.sidebar:
         unsafe_allow_html=True
     )
     st.markdown("---")
+
+    st.markdown("""
+        <style>
+        /* Force left alignment for all sidebar labels */
+        section[data-testid="stSidebar"] label {
+            text-align: left !important;
+            display: block;
+        }
+        </style>
+        """, 
+        unsafe_allow_html=True)
+
 # Add sidebar for merchant selection
 merchant_id = st.session_state.merchant_id
 merchant_name = merchant_df[merchant_df["merchant_id"] == merchant_id]["merchant_name"].values[0]
 st.sidebar.markdown(f"**Logged in as:** {merchant_name}")
+
+# herereeee
+
 
 # Convert dataset order_time to datetime
 data["transaction_data"]["order_time"] = pd.to_datetime(data["transaction_data"]["order_time"])
@@ -712,6 +727,23 @@ with col2:
         new_date = st.session_state.selected_date + timedelta(days=1)
         if new_date <= max_date:
             st.session_state.selected_date = new_date
+
+    LANGUAGES = {
+        'English': 'en',
+        'Bahasa Melayu': 'ms',
+        '中文': 'zh',
+        'Tiếng Việt': 'vi',
+        'ภาษาไทย': 'th'
+    }
+
+    selected_language = st.selectbox(
+        "🌐 Select Language",
+        options=list(LANGUAGES.keys()),
+        index=0  
+    )
+
+    # Store selected language code in session state
+    st.session_state.language = LANGUAGES[selected_language]
 
 # Final selected date for logic
 date_param = st.session_state.selected_date.strftime("%Y-%m-%d")
