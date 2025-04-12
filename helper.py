@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from data_loader import load_data
+from smart_nudges import SmartNudges
+from typing import List
 
 class BusinessAnalytics:
     def __init__(self, merchant_id=None):
@@ -22,6 +24,26 @@ class BusinessAnalytics:
             on='item_id', 
             how='left'
         )
+        
+        # Initialize SmartNudges if merchant_id is provided
+        if merchant_id:
+            self.smart_nudges = SmartNudges(
+                self.transaction_data, 
+                merchant_id,
+                self.items,
+                self.transaction_items
+            )
+    
+    def get_smart_nudges(self) -> List[str]:
+        """Get personalized smart nudges for the merchant"""
+        if not hasattr(self, 'smart_nudges'):
+            return []
+            
+        merchant_name = self.merchant[
+            self.merchant['merchant_id'] == self.merchant_id
+        ]['merchant_name'].iloc[0]
+        
+        return self.smart_nudges.get_personalized_nudges(merchant_name)
     
     def get_weekly_growth_trends(self):
         """Calculate weekly growth trends from real transaction data with more detailed insights"""
@@ -241,89 +263,101 @@ class BusinessAnalytics:
         top_items = self.get_top_3_items(metric='revenue')
         bottom_items = self.get_top_3_items(metric='orders')
         
+        # Calculate day-to-day growth
+        daily_growth = {}
+        for day in daily_sales.index:
+            if day in daily_sales.index:
+                current_day_sales = daily_sales.loc[day, ('order_value', 'sum')]
+                avg_other_days = daily_sales.loc[daily_sales.index != day, ('order_value', 'sum')].mean()
+                if avg_other_days > 0:
+                    growth = ((current_day_sales - avg_other_days) / avg_other_days) * 100
+                    daily_growth[day] = growth
+        
         # Generate data-driven suggestions based on merchant's performance
         best_day = daily_sales[('order_value', 'sum')].idxmax()
         worst_day = daily_sales[('order_value', 'sum')].idxmin()
         peak_hour = hourly_sales.idxmax()
         
-        # Base suggestions from merchant's data analysis
+        # Day-specific suggestions
+        if best_day in daily_growth and daily_growth[best_day] > 20:
+            suggestions.append(
+                f"📈 {best_day}s are your best performing days with {daily_growth[best_day]:.0f}% higher sales than average. "
+                f"Consider scheduling special promotions on {best_day}s to maximize revenue."
+            )
+        
+        if worst_day in daily_growth and daily_growth[worst_day] < -20:
+            suggestions.append(
+                f"📉 {worst_day}s are your slowest days with {abs(daily_growth[worst_day]):.0f}% lower sales than average. "
+                f"Try offering special discounts or bundles on {worst_day}s to boost traffic."
+            )
+        
+        # Hour-specific suggestions
+        if peak_hour >= 11 and peak_hour <= 14:
+            suggestions.append(
+                f"🍽️ Lunch hours ({peak_hour}:00) are your busiest time. Consider offering lunch specials or quick meal deals "
+                "to attract more customers during this peak period."
+            )
+        elif peak_hour >= 17 and peak_hour <= 20:
+            suggestions.append(
+                f"🌙 Dinner hours ({peak_hour}:00) are your peak time. Consider introducing family meal deals or dinner specials "
+                "to increase order value during this period."
+            )
+        
+        # Item-specific suggestions
         if top_items:
-            suggestions.extend([
-                f"Your best-selling item is {top_items[0]['item_name']} with RM{top_items[0]['revenue']:.2f} revenue. Consider promoting it more!",
-                f"Sales peak on {best_day}s (RM{daily_sales.loc[best_day, ('order_value', 'sum')]:.2f}). Consider special promotions on {worst_day}s to boost sales.",
-                f"Busiest hour is {peak_hour}:00. Consider staffing adjustments during peak times.",
-            ])
-            if bottom_items:
-                suggestions.append(f"Bundle {top_items[0]['item_name']} with {bottom_items[-1]['item_name']} to increase sales of slower-moving items.")
+            best_seller = top_items[0]
+            suggestions.append(
+                f"⭐ Your best-selling item is {best_seller['item_name']} with RM{best_seller['revenue']:.2f} in revenue. "
+                "Consider creating a special combo meal featuring this item to increase average order value."
+            )
         
-        # Performance-based suggestions
-        if total_sales < 10000:  # Low-performing merchant
-            suggestions.extend([
-                "Consider running daily specials to attract more customers",
-                "Offer a loyalty program to encourage repeat customers",
-                "Focus on improving your average order value through upselling"
-            ])
-        elif total_sales < 50000:  # Medium-performing merchant
-            suggestions.extend([
-                "Implement a tiered pricing strategy for different customer segments",
-                "Consider expanding your delivery radius to reach more customers",
-                "Run targeted promotions during your slowest hours"
-            ])
-        else:  # High-performing merchant
-            suggestions.extend([
-                "Consider opening a second location in a high-demand area",
-                "Implement a premium menu with higher-margin items",
-                "Launch a subscription service for regular customers"
-            ])
+        if bottom_items:
+            slow_seller = bottom_items[-1]
+            suggestions.append(
+                f"🔄 {slow_seller['item_name']} is your slowest-moving item. Consider bundling it with your best-seller "
+                "or offering it as a limited-time special to increase its sales."
+            )
         
-        # Average order value based suggestions
-        if avg_order_value < 20:
-            suggestions.extend([
-                "Consider adding combo meals to increase average order value",
-                "Implement a minimum order value for delivery",
-                "Offer free delivery for orders above a certain amount"
-            ])
-        elif avg_order_value > 50:
-            suggestions.extend([
-                "Focus on premium ingredients and presentation",
-                "Consider offering catering services",
-                "Implement a VIP customer program"
-            ])
-        
-        # Merchant type specific suggestions
-        if merchant_type == "Restaurant":
-            suggestions.extend([
-                "Lunch specials (12-2 PM) could increase weekday sales",
-                "Weekend family bundles are popular in your area",
-                "Consider adding a kids' menu to attract family customers"
-            ])
-        elif merchant_type == "Cafe":
-            suggestions.extend([
-                "Afternoon tea sets (2-5 PM) are trending in your area",
-                "Consider adding seasonal drinks to your menu",
-                "Loyalty program for regular coffee drinkers could increase retention"
-            ])
-        
-        # Business size specific suggestions
-        if business_size == "Small":
-            suggestions.extend([
-                "Focus on your top 3 bestsellers to maximize profits",
-                "Consider offering takeaway specials to increase orders",
-                "Limited-time offers could help test new menu items"
-            ])
-        elif business_size == "Large":
-            suggestions.extend([
-                "Implement a tiered loyalty program for different customer segments",
-                "Bulk purchase discounts could attract more customers",
-                "Consider adding a catering menu for corporate clients"
-            ])
-        
-        # Add inventory-specific suggestions
+        # Inventory suggestions
         stock_alerts = self.get_low_stock_alerts()
         if isinstance(stock_alerts, list) and len(stock_alerts) > 0:
             for alert in stock_alerts:
                 if isinstance(alert, dict) and 'suggestion' in alert:
                     suggestions.append(alert['suggestion'])
+        
+        # Performance-based suggestions
+        if total_sales < 10000:  # Low-performing merchant
+            suggestions.extend([
+                "💡 Consider running daily specials to attract more customers",
+                "🎯 Focus on improving your average order value through upselling techniques",
+                "📱 Increase your online presence through social media promotions"
+            ])
+        elif total_sales < 50000:  # Medium-performing merchant
+            suggestions.extend([
+                "📊 Implement a tiered pricing strategy for different customer segments",
+                "🚀 Consider expanding your delivery radius to reach more customers",
+                "🎁 Run targeted promotions during your slowest hours"
+            ])
+        else:  # High-performing merchant
+            suggestions.extend([
+                "🏆 Consider opening a second location in a high-demand area",
+                "💎 Implement a premium menu with higher-margin items",
+                "📅 Launch a subscription service for regular customers"
+            ])
+        
+        # Average order value based suggestions
+        if avg_order_value < 20:
+            suggestions.extend([
+                "🍱 Consider adding combo meals to increase average order value",
+                "🚚 Implement a minimum order value for delivery",
+                "🎉 Offer free delivery for orders above a certain amount"
+            ])
+        elif avg_order_value > 50:
+            suggestions.extend([
+                "✨ Focus on premium ingredients and presentation",
+                "🎪 Consider offering catering services",
+                "👑 Implement a VIP customer program"
+            ])
         
         return suggestions
     

@@ -39,6 +39,10 @@ def get_daily_sales_summary(date_str=None):
         yesterday_date = current_date - timedelta(days=1)
         yesterday = yesterday_date.strftime("%Y-%m-%d")
 
+        # Format dates for display
+        display_date = current_date.strftime("%d %b %Y")
+        display_yesterday = yesterday_date.strftime("%d %b %Y")
+
         # Filter by date AND merchant
         daily_data = analytics.transaction_data[
             (analytics.transaction_data['order_time'].dt.strftime('%Y-%m-%d') == date_str) &
@@ -46,7 +50,7 @@ def get_daily_sales_summary(date_str=None):
         ]
 
         if daily_data.empty:
-            return f"No sales data available for {date_str} (Merchant: {merchant_id})"
+            return f"No sales data available for {display_date} (Merchant: {merchant_id})"
 
         # Metrics for selected date
         total_sales = daily_data['order_value'].sum()
@@ -62,12 +66,18 @@ def get_daily_sales_summary(date_str=None):
 
         # Growth calculation
         growth = ((total_sales - yesterday_sales) / yesterday_sales * 100) if yesterday_sales > 0 else 0
+        
+        # Determine trend indicator and emoji
+        trend_indicator = "▼" if growth < 0 else "▲" if growth > 0 else "◆"
+        trend_emoji = "📉" if growth < 0 else "📈" if growth > 0 else "➖"
 
-        return f"""📊 Sales Summary for {date_str} (Merchant: {merchant_id}):
-• Total Sales: RM{total_sales:,.2f}
-• Number of Orders: {num_orders}
-• Average Order Value: RM{avg_order_value:,.2f}
-• Growth vs Previous Day ({yesterday}): {growth:+.1f}%"""
+        return f"""📊 **Sales Summary – {display_date}**
+Merchant ID: {merchant_id}
+
+• Total Sales: **RM{total_sales:,.2f}**
+• Orders Received: **{num_orders}**
+• Average Order Value: **RM{avg_order_value:,.2f}**
+• Growth vs Previous Day ({display_yesterday}): {trend_emoji} {trend_indicator} {abs(growth):.1f}%"""
 
     except Exception as e:
         return f"Error calculating daily sales summary: {str(e)}"

@@ -14,12 +14,17 @@ https://drive.google.com/drive/folders/1DSLjceEUFvc8DS12Rmz7tmuSBVfDzGII?usp=dri
   - Top-selling items analysis
   - Inventory monitoring and alerts
   - Sales trends and patterns
+  - Customer behavior analysis
+  - Profitability insights
+  - Seasonal trend analysis
 
 - **Personalized Merchant Guidance**
   - Business type-specific recommendations
   - Size-appropriate suggestions
   - Location-based insights
   - Competitive analysis
+  - Data-driven business tips
+  - Promotion effectiveness analysis
 
 - **Multilingual Support**
   - English
@@ -56,16 +61,23 @@ streamlit run chat_interface.py
 
 2. Open your browser and navigate to `http://localhost:8501`
 
-3. Configure your merchant profile in the sidebar:
+3. Login with your merchant credentials:
+   - Select your merchant name from the dropdown
+   - Enter the password (default: 1234)
+
+4. Configure your preferences in the sidebar:
    - Select your preferred language
    - Choose your business type
    - Specify your business size
 
-4. Start chatting with the assistant about:
+5. Start chatting with the assistant about:
    - Sales and revenue
    - Inventory levels
    - Business tips and suggestions
    - Market trends
+   - Customer behavior
+   - Promotions and marketing
+   - Seasonal patterns
 
 ## Project Structure
 
@@ -74,10 +86,26 @@ MEX-Assistant/
 ├── app.py                 # Main Streamlit application
 ├── chat_interface.py      # Enhanced chat interface
 ├── logic.py              # Business logic and analytics
+├── helper.py             # Helper functions and analytics
 ├── data_loader.py        # Data loading utilities
 ├── requirements.txt      # Project dependencies
-└── README.md            # Project documentation
+├── .streamlit/           # Streamlit configuration
+├── transaction_data.csv  # Sales transaction records
+├── transaction_items.csv # Individual item details
+├── items.csv            # Product catalog
+├── merchant.csv         # Merchant information
+└── keywords.csv         # Multilingual keywords
 ```
+
+## Dependencies
+
+- streamlit==1.31.1
+- pandas==2.2.0
+- numpy==1.26.3
+- python-dotenv==1.0.1
+- plotly==5.18.0
+- openai==1.12.0
+- langchain==0.1.4
 
 ## Data Sources
 
@@ -87,6 +115,36 @@ The assistant uses the following data files:
 - `items.csv`: Product catalog
 - `merchant.csv`: Merchant information
 - `keywords.csv`: Multilingual keywords and phrases
+
+## Features in Detail
+
+### Sales Analysis
+- Daily, weekly, and monthly sales summaries
+- Growth rate calculations
+- Best and worst performing days
+- Peak hours analysis
+- Average order value tracking
+
+### Inventory Management
+- Low stock alerts
+- Sales frequency analysis
+- Stockout predictions
+- Inventory optimization suggestions
+- Reorder recommendations
+
+### Business Insights
+- Personalized business tips
+- Promotion effectiveness analysis
+- Customer behavior patterns
+- Seasonal trend analysis
+- Profitability metrics
+
+### Customer Analytics
+- Peak hours identification
+- Popular cuisines analysis
+- Order patterns
+- Customer preferences
+- Sales patterns by time of day
 
 ## Contributing
 
@@ -105,3 +163,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Grab for providing the opportunity to develop this solution
 - The development team for their contributions
 - All merchant-partners for their valuable feedback
+- The open-source community for their tools and libraries

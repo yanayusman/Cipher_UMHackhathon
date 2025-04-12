@@ -14,9 +14,6 @@ from data_loader import load_data
 from datetime import datetime, timedelta
 from helper import BusinessAnalytics
 
-# Initialize BusinessAnalytics
-analytics = BusinessAnalytics(merchant_id=st.session_state.merchant_id)
-
 # Load data once at startup
 data = load_data()
 merchant_df = data["merchant"]
@@ -52,6 +49,18 @@ def login_page():
 if not st.session_state.logged_in:
     login_page()
     st.stop()
+
+# Initialize analytics after login
+analytics = BusinessAnalytics(merchant_id=st.session_state.merchant_id)
+
+# Display smart nudges
+if st.session_state.logged_in:
+    nudges = analytics.get_smart_nudges()
+    if nudges:
+        st.markdown("### 💡 Smart Suggestions")
+        for nudge in nudges:
+            st.info(nudge)
+        st.markdown("---")
 
 def get_img_as_base64(file_path):
     with open(file_path, "rb") as f:
