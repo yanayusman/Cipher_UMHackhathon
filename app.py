@@ -599,31 +599,50 @@ st.write("Hi there!! Ask me about your sales, stock or tips to improve your busi
 # Add sidebar for merchant selection
 merchant_id = st.sidebar.selectbox(
     "Select Merchant",
-    options=data["merchant"]["merchant_id"].unique(),
+    options=data["merchant"]["merchant_name"].unique(),
     format_func=lambda x: f"Merchant {x}"
 )
 
-# Add date selection with quick buttons
+# Convert dataset order_time to datetime
+data["transaction_data"]["order_time"] = pd.to_datetime(data["transaction_data"]["order_time"])
+min_date = data["transaction_data"]["order_time"].min().date()
+max_date = data["transaction_data"]["order_time"].max().date()
+
+# Initialize date in session state if not present
+if "selected_date" not in st.session_state:
+    st.session_state.selected_date = max_date  # or datetime.now().date()
+
+# Date input at the top
+selected_date = st.sidebar.date_input(
+    "📅 Select Date",
+    value=st.session_state.selected_date,
+    min_value=min_date,
+    max_value=max_date,
+    key="date_picker"
+)
+
+# Update session state if user manually changes the date
+if selected_date != st.session_state.selected_date:
+    st.session_state.selected_date = selected_date
+
+# Buttons below the date input
 col1, col2 = st.sidebar.columns(2)
 with col1:
-    if st.button("Today"):
-        date_param = datetime.now().strftime("%Y-%m-%d")
-    else:
-        date_param = None
+    if st.button("◀ Previous"):
+        new_date = st.session_state.selected_date - timedelta(days=1)
+        if new_date >= min_date:
+            st.session_state.selected_date = new_date
 with col2:
-    if st.button("Yesterday"):
-        date_param = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    else:
-        date_param = None
+    if st.button("Next ▶"):
+        new_date = st.session_state.selected_date + timedelta(days=1)
+        if new_date <= max_date:
+            st.session_state.selected_date = new_date
 
-# Add date input
-selected_date = st.sidebar.date_input(
-    "Select Date",
-    value=date_param if date_param else None,
-    min_value=None,
-    max_value=None,
-    key=None
-)
+# Final selected date for logic
+date_param = st.session_state.selected_date.strftime("%Y-%m-%d")
+
+
+
 
 # Add help section
 with st.expander("💡 What can I ask?"):
